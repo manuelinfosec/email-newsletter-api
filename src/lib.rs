@@ -4,7 +4,6 @@ use std::net::TcpListener;
 use actix_web::{App, HttpResponse, HttpServer, web};
 use actix_web::dev::Server;
 use actix_web::web::Form;
-use actix_web::web::Json;
 
 async fn health_check() -> HttpResponse {
     HttpResponse::Ok().finish()

@@ -17,6 +17,8 @@ actix-web = "4.0.0"
 config = "0.11"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "0.8.1", features = ["v4"] }
+chrono = "0.4.15"
 
 # Using table-like toml syntax to avoid long lines
 [dependencies.sqlx]

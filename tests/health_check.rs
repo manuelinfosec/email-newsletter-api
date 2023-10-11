@@ -4,7 +4,7 @@ use std::net::TcpListener;
 
 #[tokio::test]
 async fn health_check_works() {
-    let address = spawn_app();
+    let address = spawn_app().await;
 
     let client = reqwest::Client::new();
 
@@ -18,15 +18,25 @@ async fn health_check_works() {
     assert_eq!(Some(0), response.content_length());
 }
 
-fn spawn_app() -> String {
+async fn spawn_app() -> String {
     // create a listener on a random port assigned by the Operating System
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
 
     // retrieve port assigned by the OS
     let port = listener.local_addr().unwrap().port();
 
+    // Panic if configuration cannot be read
+    let configuration: Settings = get_configuration().expect("Failed to read configuration");
+
+    // Create PgConnection to database
+    let connection: PgConnection =
+        PgConnection::connect(&configuration.database.connection_string())
+            .await
+            .expect("Failed to connect to Postgres.");
+
     // start the server
-    let server = email_newsletter_api::startup::run(listener).expect("Failed to bind address");
+    let server =
+        email_newsletter_api::startup::run(listener, connection).expect("Failed to bind address");
 
     // run server as background task
     // tokio drops runtime after every test case
@@ -39,7 +49,8 @@ fn spawn_app() -> String {
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
     // Initialization
-    let app_address = spawn_app();
+    let app_address = spawn_app().await;
+
     let configuration: Settings = get_configuration().expect("Failed to read configuration.");
     let connection_string: String = configuration.database.connection_string();
     // The `Connection` trait MUST be in scope to invoke
@@ -74,7 +85,8 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
 
 #[tokio::test]
 async fn subscribe_returns_a_400_when_data_is_missing() {
-    let app_address = spawn_app();
+    let app_address = spawn_app().await;
+
     let client = reqwest::Client::new();
     let test_cases = vec![
         ("name=manuel", "missing the email"),

@@ -1,4 +1,5 @@
 use std::net::TcpListener;
+use sqlx::{PgConnection, Connection};
 
 #[tokio::test]
 async fn health_check_works() {
@@ -17,14 +18,14 @@ async fn health_check_works() {
 }
 
 fn spawn_app() -> String {
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .expect("Failed to bind to random port");
+    // create a listener on a random port assigned by the Operating System
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
 
     // retrieve port assigned by the OS
     let port = listener.local_addr().unwrap().port();
 
     // start the server
-    let server = email_newsletter_api::run(listener).expect("Failed to bind address");
+    let server = email_newsletter_api::startup::run(listener).expect("Failed to bind address");
 
     // run server as background task
     // tokio drops runtime after every test case

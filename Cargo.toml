@@ -12,11 +12,24 @@ path = "src/lib.rs"
 name = "email-newsletter-api"
 path = "src/main.rs"
 
-
 [dependencies]
 actix-web = "4.0.0"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+config = "0.11"
 serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+# Using table-like toml syntax to avoid long lines
+[dependencies.sqlx]
+version = "0.5.7"
+default-features = false
+features = [
+    "runtime-actix-rustls", # Use actix runtime
+    "macros",               # access to `sqlx::query!` and `sqlx::query_as!`
+    "postgres",             # postgres-specific functionality
+    "uuid",                 # adds supports for mapping sql uuid to `Uuid type from `uuid` crate
+    "chrono",               # support for SQL timestamptz to DateTime<T> from the `chrono` crate
+    "migrate",              # managing migrations from application directly
+]
 
 [dev-dependencies]
 reqwest = "0.11"

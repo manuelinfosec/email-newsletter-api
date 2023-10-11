@@ -1,2 +1,4 @@
 /target
 init_db.bat
+*.sh
+configuration.yaml

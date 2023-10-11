@@ -1,5 +1,5 @@
-use serde;
 use config;
+use serde;
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
@@ -16,7 +16,7 @@ pub struct DatabaseSettings {
     pub database_name: String,
 }
 
-pub fn get_configuration() - Result<Settings, config::configError> {
+pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     // Initialize conifguration reader
     let mut settings = config::Config::default();
 
@@ -28,7 +28,6 @@ pub fn get_configuration() - Result<Settings, config::configError> {
     // Try to convert the configuration values it read into our Settings type
     settings.try_into()
 }
-
 
 impl DatabaseSettings {
     pub fn connection_string(&self) -> String {

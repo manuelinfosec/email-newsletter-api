@@ -1,19 +1,16 @@
 // manual binding to address
-use std::net::TcpListener;
-
-use actix_web::dev::Server;
 use actix_web::web::Form;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::HttpResponse;
 
 // create request struct for subscription
 #[derive(serde::Deserialize)]
-struct FormData {
+pub struct FormData {
     email: String,
     name: String,
 }
 
 // will always return a 200 OK
-async fn subscribe(form: Form<FormData>) -> HttpResponse {
+pub async fn subscribe(form: Form<FormData>) -> HttpResponse {
     println!("Name: {}", form.name);
     println!("Email: {}", form.email);
 

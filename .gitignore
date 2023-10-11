@@ -2,3 +2,4 @@
 init_db.bat
 *.sh
 configuration.yaml
+.env

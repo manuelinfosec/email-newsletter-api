@@ -3,13 +3,13 @@ use std::net::TcpListener;
 use actix_web::dev::Server;
 use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
-use sqlx::PgConnection;
+use sqlx::PgPool;
 
 use crate::routes::{health_check, subscribe};
 
-pub fn run(listener: TcpListener, connection: PgConnection) -> Result<Server, std::io::Error> {
+pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
     // Wrap the connection in a smart pointer because it isn't clonable
-    let connection: Data<PgConnection> = web::Data::new(connection);
+    let db_pool: Data<PgPool> = web::Data::new(db_pool);
 
     // using `move` to force the closure to take ownership of referenced variables
     let server = HttpServer::new(move || {
@@ -17,7 +17,7 @@ pub fn run(listener: TcpListener, connection: PgConnection) -> Result<Server, st
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             // Register the connection as part of the application's state
-            .app_data(connection.clone())
+            .app_data(db_pool.clone())
     })
     .listen(listener)?
     .run();

@@ -1,15 +1,20 @@
 use email_newsletter_api::configuration::{get_configuration, Settings};
-use sqlx::{Connection, PgConnection};
+use sqlx::PgPool;
 use std::net::TcpListener;
+
+pub struct TestApp {
+    pub address: String,
+    pub db_pool: PgPool,
+}
 
 #[tokio::test]
 async fn health_check_works() {
-    let address = spawn_app().await;
+    let app: TestApp = spawn_app().await;
 
     let client = reqwest::Client::new();
 
     let response = client
-        .get(&format!("{}/health_check", &address))
+        .get(&format!("{}/health_check", &app.address))
         .send()
         .await
         .expect("Failed to execute request.");
@@ -18,52 +23,49 @@ async fn health_check_works() {
     assert_eq!(Some(0), response.content_length());
 }
 
-async fn spawn_app() -> String {
+async fn spawn_app() -> TestApp {
     // create a listener on a random port assigned by the Operating System
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
 
     // retrieve port assigned by the OS
     let port = listener.local_addr().unwrap().port();
 
+    // local address
+    let address: String = format!("http://127.0.0.1:{}", port);
+
     // Panic if configuration cannot be read
     let configuration: Settings = get_configuration().expect("Failed to read configuration");
 
     // Create PgConnection to database
-    let connection: PgConnection =
-        PgConnection::connect(&configuration.database.connection_string())
-            .await
-            .expect("Failed to connect to Postgres.");
+    let connection_pool: PgPool = PgPool::connect(&configuration.database.connection_string())
+        .await
+        .expect("Failed to connect to Postgres.");
 
     // start the server
-    let server =
-        email_newsletter_api::startup::run(listener, connection).expect("Failed to bind address");
+    let server = email_newsletter_api::startup::run(listener, connection_pool.clone())
+        .expect("Failed to bind address");
 
     // run server as background task
     // tokio drops runtime after every test case
     // no need to implement a clean up logic due to tokio
     let _ = tokio::spawn(server);
 
-    format!("http://127.0.0.1:{}", port)
+    TestApp {
+        address,
+        db_pool: connection_pool,
+    }
 }
 
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
     // Initialization
-    let app_address = spawn_app().await;
-
-    let configuration: Settings = get_configuration().expect("Failed to read configuration.");
-    let connection_string: String = configuration.database.connection_string();
-    // The `Connection` trait MUST be in scope to invoke
-    // the `PgConnection::connect` - it is not an inherent method of the struct
-    let mut connection: PgConnection = PgConnection::connect(&connection_string)
-        .await
-        .expect("Failed to connect to PostgreSQL database.");
+    let app: TestApp = spawn_app().await;
     // HTTP Client
     let client = reqwest::Client::new();
 
     let body = "name=Manuel&email=manuelinfosec%40gmail.com";
     let response = client
-        .post(&format!("{}/subscriptions", &app_address))
+        .post(&format!("{}/subscriptions", &app.address))
         .header("content-type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
@@ -75,7 +77,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
 
     // Test if values saved to database
     let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
-        .fetch_one(&mut connection)
+        .fetch_one(&app.db_pool)
         .await
         .expect("Failed to fetch saved subscription.");
 
@@ -85,7 +87,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
 
 #[tokio::test]
 async fn subscribe_returns_a_400_when_data_is_missing() {
-    let app_address = spawn_app().await;
+    let app: TestApp = spawn_app().await;
 
     let client = reqwest::Client::new();
     let test_cases = vec![
@@ -96,7 +98,7 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
 
     for (invalid_body, error_message) in test_cases {
         let response = client
-            .post(&format!("{}/subscriptions", &app_address))
+            .post(&format!("{}/subscriptions", app.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(invalid_body)
             .send()

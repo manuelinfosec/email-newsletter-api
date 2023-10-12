@@ -1,7 +1,7 @@
 use email_newsletter_api::configuration::get_configuration;
 use email_newsletter_api::configuration::Settings;
 use email_newsletter_api::startup::run;
-use sqlx::{Connection, PgConnection};
+use sqlx::PgPool;
 use std::net::TcpListener;
 
 // Creating migrations\20231010233108_create_subscriptions_table.sql
@@ -23,11 +23,10 @@ async fn main() -> std::io::Result<()> {
     // Panic if configuration cannot be read
     let configuration: Settings = get_configuration().expect("Failed to read configuration");
 
-    // Create PgConnection to database
-    let connection: PgConnection =
-        PgConnection::connect(&configuration.database.connection_string())
-            .await
-            .expect("Failed to connect to Postgres.");
+    // Create PgConnection to database | `sqlx::PgPool` is type alias for `sqlx::Pool<sqlx::Postgress>`
+    let connection: PgPool = PgPool::connect(&configuration.database.connection_string())
+        .await
+        .expect("Failed to connect to Postgres.");
 
     // Create address string from configuration file
     let address: String = format!("127.0.0.1:{}", configuration.application_port);

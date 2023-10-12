@@ -1,5 +1,6 @@
-use email_newsletter_api::configuration::{get_configuration, Settings};
+use email_newsletter_api::configuration::{get_configuration, DatabaseSettings, Settings};
 use sqlx::PgPool;
+use sqlx::{Connection, Executor, PgConnection};
 use std::net::TcpListener;
 
 pub struct TestApp {
@@ -23,6 +24,34 @@ async fn health_check_works() {
     assert_eq!(Some(0), response.content_length());
 }
 
+pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
+    // Create PgConnection to database
+    let mut connection: PgConnection =
+        PgConnection::connect(&config.connection_string_without_db())
+            .await
+            .expect("Failed to connect to Postgres.");
+
+    // Execute database creation query with previous connection
+    connection
+        .execute(format!(r#"CREATE DATABASE "{}""#, config.database_name).as_str())
+        .await
+        .expect("Failed to create dataabase");
+
+    // create connection pool for test use
+    let connection_pool: PgPool = PgPool::connect(&config.connection_string())
+        .await
+        .expect("Failed to create connection pool");
+
+    // perform migrations in the `migrations` folder on the database
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate the database");
+
+    // return connection pool
+    connection_pool
+}
+
 async fn spawn_app() -> TestApp {
     // create a listener on a random port assigned by the Operating System
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
@@ -34,12 +63,10 @@ async fn spawn_app() -> TestApp {
     let address: String = format!("http://127.0.0.1:{}", port);
 
     // Panic if configuration cannot be read
-    let configuration: Settings = get_configuration().expect("Failed to read configuration");
+    let mut configuration: Settings = get_configuration().expect("Failed to read configuration");
+    configuration.database.database_name = uuid::Uuid::new_v4().to_string();
 
-    // Create PgConnection to database
-    let connection_pool: PgPool = PgPool::connect(&configuration.database.connection_string())
-        .await
-        .expect("Failed to connect to Postgres.");
+    let connection_pool: PgPool = configure_database(&configuration.database).await;
 
     // start the server
     let server = email_newsletter_api::startup::run(listener, connection_pool.clone())

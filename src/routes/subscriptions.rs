@@ -14,8 +14,15 @@ pub struct FormData {
 
 // will always return a 200 OK
 pub async fn subscribe(form: Form<FormData>, pool: web::Data<PgPool>) -> HttpResponse {
-    println!("Name: {}", form.name);
-    println!("Email: {}", form.email);
+    let request_id = uuid::Uuid::new_v4();
+
+    log::info!(
+        "Request {request_id}: Adding '{}' - '{}' as a new subscriber.",
+        form.email,
+        form.name
+    );
+
+    log::info!("Request {request_id}: Saving new subscriber details in the database");
 
     // TODO: Validate email address or throw error
 
@@ -37,9 +44,14 @@ pub async fn subscribe(form: Form<FormData>, pool: web::Data<PgPool>) -> HttpRes
 
     // perform error handling on query_status
     match query_status {
-        Ok(_) => HttpResponse::Ok().finish(),
+        Ok(_) => {
+            // log successful response
+            log::info!("Request {request_id}: New subscriber details have been saved");
+            HttpResponse::Ok().finish()
+        }
         Err(e) => {
-            println!("Failed to execute query: {e}");
+            // log failed response
+            log::error!("Request {request_id}: Failed to execute query: {e:?}");
             HttpResponse::InternalServerError().finish()
         }
     }

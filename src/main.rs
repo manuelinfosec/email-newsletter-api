@@ -1,6 +1,7 @@
 use email_newsletter_api::configuration::get_configuration;
 use email_newsletter_api::configuration::Settings;
 use email_newsletter_api::startup::run;
+use env_logger::Env;
 use sqlx::PgPool;
 use std::net::TcpListener;
 
@@ -20,6 +21,9 @@ use std::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    // Printing logs from info-level and above, if `RUST_LOG` env variable is not set
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+
     // Panic if configuration cannot be read
     let configuration: Settings = get_configuration().expect("Failed to read configuration");
 

@@ -1,5 +1,4 @@
 /target
 *.sh
-configuration.yaml
 .env
 README.md

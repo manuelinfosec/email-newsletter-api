@@ -20,7 +20,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 uuid = { version = "0.8.1", features = ["v4"] }
 chrono = "0.4.15"
 env_logger = "0.9"
-log = "0.4"
+log = "0.5"
 
 # Using table-like toml syntax to avoid long lines
 [dependencies.sqlx]

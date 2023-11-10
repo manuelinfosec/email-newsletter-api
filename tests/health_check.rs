@@ -1,4 +1,5 @@
 use email_newsletter_api::configuration::{get_configuration, DatabaseSettings, Settings};
+use reqwest::{Client, Response};
 use sqlx::PgPool;
 use sqlx::{Connection, Executor, PgConnection};
 use std::net::TcpListener;
@@ -88,10 +89,10 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     // Initialization
     let app: TestApp = spawn_app().await;
     // HTTP Client
-    let client = reqwest::Client::new();
+    let client: Client = reqwest::Client::new();
 
-    let body = "name=Manuel&email=manuelinfosec%40gmail.com";
-    let response = client
+    let body: &str = "name=Manuel&email=manuelinfosec%40gmail.com";
+    let response: Response = client
         .post(&format!("{}/subscriptions", &app.address))
         .header("content-type", "application/x-www-form-urlencoded")
         .body(body)

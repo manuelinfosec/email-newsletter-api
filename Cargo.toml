@@ -19,8 +19,10 @@ serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 uuid = { version = "0.8.1", features = ["v4"] }
 chrono = "0.4.15"
-env_logger = "0.9"
-log = "0.4.20"
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.1"
 
 # Using table-like toml syntax to avoid long lines
 [dependencies.sqlx]

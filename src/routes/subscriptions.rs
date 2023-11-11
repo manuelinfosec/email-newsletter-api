@@ -74,12 +74,12 @@ pub async fn subscribe(form: Form<FormData>, pool: web::Data<PgPool>) -> HttpRes
     match query_status {
         Ok(_) => {
             // log successful response
-            tracing::info!("Request {request_id}: New subscriber details have been saved");
+            tracing::info!("New subscriber details have been saved");
             HttpResponse::Ok().finish()
         }
         Err(e) => {
             // log failed response
-            tracing::error!("Request {request_id}: Failed to execute query: {e:?}");
+            tracing::error!("Failed to execute query: {e:?}");
             HttpResponse::InternalServerError().finish()
         }
     }

@@ -6,7 +6,6 @@ use std::net::TcpListener;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer}; // used because `tracing-subscriber` does not implement metadata inheritance
 use tracing_log::LogTracer;
-use tracing_subscriber::filter::FromEnvError;
 use tracing_subscriber::layer::Layered;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
@@ -36,7 +35,7 @@ async fn main() -> std::io::Result<()> {
     // env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     // Redirect all log events to the subscriber
-    // LogTracer::init().expect_err("Failed to set logger");
+    LogTracer::init().expect("Failed to set logger");
 
     // Falling back to printing all spans from info level and above
     // if the `RUST_LOG` environment variable has not been set
@@ -47,7 +46,7 @@ async fn main() -> std::io::Result<()> {
     let formatting_layer: BunyanFormattingLayer<fn() -> std::io::Stdout> =
         BunyanFormattingLayer::new(
             "email-newsletter-api".to_string(),
-            // Output the formatted spans to stdout
+            // Use a function that returns stdout
             std::io::stdout,
         );
 
@@ -77,6 +76,6 @@ async fn main() -> std::io::Result<()> {
     // collect the port of the listener
     let port: u16 = listener.local_addr().unwrap().port();
 
-    println!("Server running at port {:?}", port);
+    println!(r#"{{"msg": "Server Running at {:?}"}}"#, port);
     run(listener, connection)?.await
 }

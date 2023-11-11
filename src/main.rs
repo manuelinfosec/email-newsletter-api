@@ -23,10 +23,10 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 // See: https://docs.rs/sqlx/0.5/sqlx/macro.migrate.html
 
 // Custom type for nested annotations
-type LayeredTracing = Layered<
-    BunyanFormattingLayer<fn() -> std::io::Stdout>,
-    Layered<JsonStorageLayer, Layered<EnvFilter, Registry>>,
->;
+// type LayeredTracing = Layered<
+//     BunyanFormattingLayer<fn() -> std::io::Stdout>,
+//     Layered<JsonStorageLayer, Layered<EnvFilter, Registry>>,
+// >;
 
 /// Constructs and returns a tracing subscriber suitable for use in a tracing-enabled
 /// Rust application. The subscriber is configured with an environment filter
@@ -71,7 +71,10 @@ pub fn get_subscriber(name: String, env_filter: String) -> impl tracing::Subscri
 
     // Create a tracing subscriber with the specified environment filter
     // and Bunyan formatting layer.
-    Registry::default().with(env_filter).with(formatting_layer)
+    Registry::default()
+        .with(env_filter)
+        .with(JsonStorageLayer)
+        .with(formatting_layer)
 }
 
 /// Initializes the global subscriber for the tracing framework and sets up

@@ -37,6 +37,7 @@ impl DatabaseSettings {
         )
     }
 
+    #[allow(dead_code)]
     pub fn connection_string_without_db(&self) -> String {
         format!(
             "postgres://{}:{}@{}:{}",

@@ -1,4 +1,7 @@
 use email_newsletter_api::configuration::{get_configuration, DatabaseSettings, Settings};
+use email_newsletter_api::telemetry;
+use once_cell::sync::Lazy;
+
 use reqwest::{Client, Response};
 use sqlx::PgPool;
 use sqlx::{Connection, Executor, PgConnection};
@@ -9,13 +12,42 @@ pub struct TestApp {
     pub db_pool: PgPool,
 }
 
+// Ensure that `tracing` stack is only initlalized once
+static TRACING: Lazy<()> = Lazy::new(|| {
+    let default_filter_level: String = "info".to_string();
+    let subscriber_name: String = "test".to_string();
+
+    // We cannot assignthe output of `get_subscriber` to a variable based on the value of `TEST_LOG`
+    // because the sink is part of the type returned by `get_subscriber`, therefore they are not the
+    // same type. We could work around it, but this is the most straight-forward way of moving forward.
+
+    let test_log: Result<String, std::env::VarError> = std::env::var("TEST_LOG");
+
+    // Read environment variable for logging
+    if test_log.is_ok() && test_log.unwrap_or("false".to_string()) == "false" {
+        // create tracing subscriber with output to Stdout
+        let subscriber =
+            telemetry::get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
+
+        // register subscriber
+        telemetry::init_subscriber(subscriber);
+    } else {
+        // create tracing subscriber with output to Void
+        let subscriber =
+            telemetry::get_subscriber(subscriber_name, default_filter_level, std::io::sink);
+
+        // register subscriber
+        telemetry::init_subscriber(subscriber);
+    }
+});
+
 #[tokio::test]
 async fn health_check_works() {
     let app: TestApp = spawn_app().await;
 
-    let client = reqwest::Client::new();
+    let client: Client = reqwest::Client::new();
 
-    let response = client
+    let response: Response = client
         .get(&format!("{}/health_check", &app.address))
         .send()
         .await
@@ -54,11 +86,16 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
 }
 
 async fn spawn_app() -> TestApp {
+    // Ensure that tracing subscriber is set up before further code execution...
+    // ...and only invoked once, any subsequent invocations are ignored
+    Lazy::force(&TRACING);
+
     // create a listener on a random port assigned by the Operating System
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
+    let listener: TcpListener =
+        TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
 
     // retrieve port assigned by the OS
-    let port = listener.local_addr().unwrap().port();
+    let port: u16 = listener.local_addr().unwrap().port();
 
     // local address
     let address: String = format!("http://127.0.0.1:{}", port);
@@ -70,8 +107,9 @@ async fn spawn_app() -> TestApp {
     let connection_pool: PgPool = configure_database(&configuration.database).await;
 
     // start the server
-    let server = email_newsletter_api::startup::run(listener, connection_pool.clone())
-        .expect("Failed to bind address");
+    let server: actix_web::dev::Server =
+        email_newsletter_api::startup::run(listener, connection_pool.clone())
+            .expect("Failed to bind address");
 
     // run server as background task
     // tokio drops runtime after every test case
@@ -86,7 +124,7 @@ async fn spawn_app() -> TestApp {
 
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
-    // Initialization
+    // Initialization of TestApp
     let app: TestApp = spawn_app().await;
     // HTTP Client
     let client: Client = reqwest::Client::new();
@@ -100,7 +138,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
         .await
         .expect("Failed to execute request");
 
-    println!("Response: {response:?}");
+    // Assert that 200 is returned as status code
     assert_eq!(200, response.status().as_u16());
 
     // Test if values saved to database

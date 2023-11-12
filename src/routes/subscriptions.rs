@@ -1,57 +1,29 @@
+use crate::helper;
+use crate::types::FormData;
+
 use actix_web::web::{self, Form};
 use actix_web::HttpResponse;
 use chrono::Utc;
 use sqlx::postgres::PgQueryResult;
 use sqlx::PgPool;
-use tracing::span::Entered;
 use tracing::Instrument;
 use tracing::{self, Span};
 use uuid::Uuid;
 
-// create request struct for subscription
-#[derive(serde::Deserialize)]
-pub struct FormData {
-    email: String,
-    name: String,
-}
-
-// will always return a 200 OK
+#[tracing::instrument(name = "Adding a new subscriber",
+    skip(form, pool),
+    fields(
+        request_id = %Uuid::new_v4(),
+        subscriber_name = %form.name,
+        subscriber_email = %form.email
+    )
+)]
 pub async fn subscribe(form: Form<FormData>, pool: web::Data<PgPool>) -> HttpResponse {
-    let request_id: Uuid = uuid::Uuid::new_v4();
-
-    // tracing::info!(
-    //     "Request {request_id}: Adding '{}' - '{}' as a new subscriber.",
-    //     form.email,
-    //     form.name
-    // );
-
-    // Spans, like logs, have an associated level
-    // `info_span` creates a span at the info-level
-    let request_span: Span = tracing::info_span!(
-        "Adding a new subscriber",
-        %request_id,
-        subscriber_email = %form.email,
-        subscriber_name = %form.name
-    );
-
-    // As long as the guard variable is not dropped, all
-    // downsteams spans and log events will be registered
-    // as children of the entered span.
-    // Using `enter` in an async function is a reciper for disaster!
-    let _request_span_guard: Entered = request_span.enter();
-
-    // tracing::info!("Request {request_id}: Saving new subscriber details in the database");
-
     // TODO: Validate email address or throw error
 
     // `.enter` is not called on the query's span.
     // `.instrument` takes care of it at the right moment in the query's future lifetime
-    let query_span: Span = tracing::info_span!(
-        "Saving new subscriber details in the database",
-        %request_id,
-        subscriber_name = %form.name,
-        subscriber_email = %form.email
-    );
+    let query_span: Span = tracing::info_span!("Saving new subscriber details in the database",);
 
     // Insert values from request to database
     let query_status: Result<PgQueryResult, sqlx::Error> = sqlx::query!(

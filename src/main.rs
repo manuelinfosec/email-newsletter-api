@@ -7,7 +7,10 @@ mod types;
 
 use configuration::get_configuration;
 use configuration::Settings;
-use sqlx::PgPool;
+use secrecy::ExposeSecret;
+use sqlx::postgres::PgPoolOptions;
+use sqlx::Pool;
+use sqlx::Postgres;
 use startup::run;
 use std::net::TcpListener;
 
@@ -51,13 +54,21 @@ async fn main() -> std::io::Result<()> {
     // Panic if configuration cannot be read
     let configuration: Settings = get_configuration().expect("Failed to read configuration");
 
+    // let connection: PgPool = PgPool::connect(&configuration.database.connection_string())
+    //     .await
+    //     .expect("Failed to connect to Postgres.");
+
     // Create PgConnection to database | `sqlx::PgPool` is type alias for `sqlx::Pool<sqlx::Postgress>`
-    let connection: PgPool = PgPool::connect(&configuration.database.connection_string())
-        .await
-        .expect("Failed to connect to Postgres.");
+    let connection: Pool<Postgres> = PgPoolOptions::new()
+        .connect_timeout(std::time::Duration::from_secs(2))
+        .connect_lazy(&configuration.database.connection_string().expose_secret())
+        .expect("Failed to connect to Postgres");
 
     // Create address string from configuration file
-    let address: String = format!("127.0.0.1:{}", configuration.application_port);
+    let address: String = format!(
+        "{}:{}",
+        configuration.application.host, configuration.application.port
+    );
 
     // in the case of an unavailable port, use port 0 which defaults to any available port assigned by the OS
     let listener: TcpListener = TcpListener::bind(address).expect("Failed to bind to random port");

@@ -3,6 +3,7 @@ use email_newsletter_api::telemetry;
 use once_cell::sync::Lazy;
 
 use reqwest::{Client, Response};
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use sqlx::{Connection, Executor, PgConnection};
 use std::net::TcpListener;
@@ -60,7 +61,7 @@ async fn health_check_works() {
 pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     // Create PgConnection to database
     let mut connection: PgConnection =
-        PgConnection::connect(&config.connection_string_without_db())
+        PgConnection::connect(&config.connection_string_without_db().expose_secret())
             .await
             .expect("Failed to connect to Postgres.");
 
@@ -71,7 +72,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .expect("Failed to create dataabase");
 
     // create connection pool for test use
-    let connection_pool: PgPool = PgPool::connect(&config.connection_string())
+    let connection_pool: PgPool = PgPool::connect(&config.connection_string().expose_secret())
         .await
         .expect("Failed to create connection pool");
 
